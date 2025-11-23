@@ -14,6 +14,12 @@
 
 import re, sys
 
+try:
+    from docx import Document
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
+
 class SRTParser(object):
     @staticmethod
     def extractTextFromSRT(fileSRT):
@@ -24,12 +30,32 @@ class SRTParser(object):
         with open(file_name, encoding=file_encoding, errors='replace') as f:
             lines = f.readlines()
             new_lines = SRTParser.clean_up(lines)
-            new_file_name = file_name[:-4] + '.txt'
+            
+            # Generate .docx file instead of .txt
+            new_file_name = file_name[:-4] + '.docx'
 
-        #write parsed txt file
-        with open(new_file_name, 'w', encoding=file_encoding) as f:
-            for line in new_lines:
-                f.write(line)
+        #write parsed text to docx file
+        if DOCX_AVAILABLE:
+            try:
+                doc = Document()
+                # Add all text lines to the document
+                for line in new_lines:
+                    if line.strip():  # Only add non-empty lines
+                        doc.add_paragraph(line.strip())
+                
+                doc.save(new_file_name)
+            except Exception as e:
+                # Fallback to .txt if docx creation fails
+                new_file_name = file_name[:-4] + '.txt'
+                with open(new_file_name, 'w', encoding=file_encoding) as f:
+                    for line in new_lines:
+                        f.write(line)
+        else:
+            # Fallback to .txt if python-docx is not available
+            new_file_name = file_name[:-4] + '.txt'
+            with open(new_file_name, 'w', encoding=file_encoding) as f:
+                for line in new_lines:
+                    f.write(line)
 
     @staticmethod
     def clean_up(lines):

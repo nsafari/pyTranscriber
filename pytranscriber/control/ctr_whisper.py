@@ -45,7 +45,7 @@ class CtrWhisper(CtrEngine, QObject):
         return model_dir
 
     @staticmethod
-    def generate_subtitles(source_path, src_language, outputSRT=None, outputTXT=None, model='base'):
+    def generate_subtitles(source_path, src_language, outputSRT=None, outputDOCX=None, model='base'):
         CtrWhisper.patch_ffmpeg()  # Ensure FFmpeg is available
 
         model = whisper.load_model(model, download_root=CtrWhisper.MODEL_DIR)
@@ -55,10 +55,16 @@ class CtrWhisper(CtrEngine, QObject):
             return -1
 
         content_srt = CtrWhisper.generate_srt_file_content(result["segments"])
-        content_txt = CtrWhisper.generate_txt_file_content(result["segments"])
 
         CtrWhisper.save_output_file(outputSRT, content_srt)
-        CtrWhisper.save_output_file(outputTXT, content_txt)
+        
+        # Generate DOCX file instead of TXT
+        if outputDOCX:
+            if not CtrWhisper.generate_docx_file(result["segments"], outputDOCX):
+                # Fallback to TXT if DOCX generation fails
+                content_txt = CtrWhisper.generate_txt_file_content(result["segments"])
+                outputTXT = str(outputDOCX).replace('.docx', '.txt')
+                CtrWhisper.save_output_file(outputTXT, content_txt)
 
         return outputSRT
 
@@ -98,6 +104,25 @@ class CtrWhisper(CtrEngine, QObject):
         for s in transcribed_segments:
             content = content + str(s["text"])
         return content
+
+    @staticmethod
+    def generate_docx_file(transcribed_segments, output_path):
+        """Generate a DOCX file from transcribed segments"""
+        try:
+            from docx import Document
+            doc = Document()
+            for s in transcribed_segments:
+                text = str(s["text"]).strip()
+                if text:  # Only add non-empty text
+                    doc.add_paragraph(text)
+            doc.save(output_path)
+            return True
+        except ImportError:
+            # Fallback to text file if python-docx is not available
+            return False
+        except Exception as e:
+            # If docx creation fails, return False to fallback to txt
+            return False
 
     #forces whisper to use the embedded ffmpeg in frozen app
     @staticmethod

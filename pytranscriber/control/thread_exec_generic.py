@@ -53,17 +53,46 @@ class ThreadExecGeneric(QThread):
         else:
             #go ahead with autosub process
             nFiles = len(self.obj_transcription_parameters.listFiles)
+            successful = 0
+            skipped = 0
+            failed = 0
+            
+            self.signalProgressFileYofN.emit(f"Starting batch processing of {nFiles} file(s)...")
+            
             for i in range(nFiles):
                 #does not continue the loop if user clicked cancel button
                 if not CtrEngine.is_operation_canceled():
                     self._updateProgressFileYofN(i, nFiles)
+                    
+                    sourceFile = self.obj_transcription_parameters.listFiles[i]
+                    outputFiles = self._generatePathOutputFile(sourceFile)
+                    
+                    # Check if already processed
+                    was_already_processed = os.path.exists(outputFiles[0]) and os.path.exists(outputFiles[1])
+                    
                     #MessageUtil.show_info_message("run engine for media")
                     self._run_engine_for_media(i, langCode)
+                    
+                    # Count results after processing
+                    if was_already_processed:
+                        skipped += 1
+                    elif os.path.exists(outputFiles[0]) and os.path.exists(outputFiles[1]):
+                        successful += 1
+                    else:
+                        failed += 1
+                else:
+                    break
 
             #if operation is canceled does not clear the file list
             if CtrEngine.is_operation_canceled():
                 self.signalResetGUIAfterCancel.emit()
             else:
+                # Show summary
+                summary = f"Batch processing complete!\n\nSuccessful: {successful}\nSkipped: {skipped}\nFailed: {failed}\nTotal: {nFiles}"
+                if failed > 0:
+                    self.signalErrorMsg.emit(summary)
+                else:
+                    self.signalProgressFileYofN.emit(summary)
                 self.signalResetGUIAfterSuccess.emit()
 
     @abstractmethod
@@ -80,11 +109,11 @@ class ThreadExecGeneric(QThread):
         fileName = os.path.splitext(base)[0]
 
         # the output file has same name as input file, located on output Folder
-        # with extension .srt
+        # with extension .srt and .docx
         pathOutputFolder = Path(self.obj_transcription_parameters.outputFolder)
         outputFileSRT = pathOutputFolder / (fileName + ".srt")
-        outputFileTXT = pathOutputFolder / (fileName + ".txt")
-        return [outputFileSRT, outputFileTXT]
+        outputFileDOCX = pathOutputFolder / (fileName + ".docx")
+        return [outputFileSRT, outputFileDOCX]
 
     @staticmethod
     def cancel():

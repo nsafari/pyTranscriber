@@ -79,6 +79,12 @@ class ViewMain:
         self.objGUI.bSelectOutputFolder.clicked.connect(self.__listenerBSelectOuputFolder)
         self.objGUI.bOpenOutputFolder.clicked.connect(self.__listenerBOpenOutputFolder)
         self.objGUI.bSelectMedia.clicked.connect(self.__listenerBSelectMedia)
+        # Add folder selection - try to connect if button exists, otherwise add as menu item
+        try:
+            if hasattr(self.objGUI, 'bSelectMediaFolder'):
+                self.objGUI.bSelectMediaFolder.clicked.connect(self.__listenerBSelectMediaFolder)
+        except:
+            pass
         self.objGUI.rbGoogleEngine.clicked.connect(self.__listenerSwitchEngine)
         self.objGUI.rbWhisper.clicked.connect(self.__listenerSwitchEngine)
 
@@ -231,7 +237,7 @@ class ViewMain:
     def __listenerBSelectMedia(self):
         # options = QFileDialog.Options()
         options = QFileDialog.DontUseNativeDialog
-        files, _ = QFileDialog.getOpenFileNames(self.objGUI.centralwidget, "Select media", "",
+        files, _ = QFileDialog.getOpenFileNames(self.objGUI.centralwidget, "Select media files", "",
                                                 "All Media Files (*.mp3 *.mp4 *.wav *.m4a *.wma *.ogg *.ogv *.mkv *.webm *.ts)")
 
         if files:
@@ -240,6 +246,33 @@ class ViewMain:
             # enable the convert button only if list of files is not empty
             self.objGUI.bConvert.setEnabled(True)
             self.objGUI.bRemoveFile.setEnabled(True)
+
+    def __listenerBSelectMediaFolder(self):
+        """Select a folder and add all media files from it"""
+        folder = QFileDialog.getExistingDirectory(self.objGUI.centralwidget, "Select folder with media files")
+        if folder:
+            media_extensions = {'.mp3', '.mp4', '.wav', '.m4a', '.wma', '.ogg', '.ogv', '.mkv', '.webm', '.ts'}
+            media_files = []
+            for root, dirs, files in os.walk(folder):
+                for file in files:
+                    if os.path.splitext(file)[1].lower() in media_extensions:
+                        media_files.append(os.path.join(root, file))
+            
+            if media_files:
+                # Sort files for consistent processing order
+                media_files.sort()
+                self.objGUI.qlwListFilesSelected.addItems(media_files)
+                self.objGUI.bConvert.setEnabled(True)
+                self.objGUI.bRemoveFile.setEnabled(True)
+                MessageUtil.show_info_message(
+                    f"Found {len(media_files)} media file(s) in the selected folder.",
+                    "Folder Selected"
+                )
+            else:
+                MessageUtil.show_error_message(
+                    "No media files found in the selected folder.",
+                    "No Files Found"
+                )
 
     def __listenerBExec(self):
         # extracts the two letter lang_code from the string on language selection

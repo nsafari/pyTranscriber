@@ -36,3 +36,4 @@ uritemplate==3.0.1
 urllib3==2.2.2
 openai-whisper
 platformdirs
+python-docx

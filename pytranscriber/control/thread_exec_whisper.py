@@ -26,32 +26,51 @@ class Thread_Exec_Whisper(ThreadExecGeneric):
         self.running = False
 
     def _run_engine_for_media(self, index, langCode):
+        import os
         sourceFile = self.obj_transcription_parameters.listFiles[index]
         outputFiles = self._generatePathOutputFile(sourceFile)
         outputFileSRT = outputFiles[0]
-        outputFileTXT = outputFiles[1]
+        outputFileDOCX = outputFiles[1]
+
+        # Check if output files already exist - skip if they do
+        if os.path.exists(outputFileSRT) and os.path.exists(outputFileDOCX):
+            file_name = os.path.basename(sourceFile)
+            self.listenerProgress(f"Skipping {file_name} (already processed)", 100)
+            self.signalProgressFileYofN.emit(f"File {index+1}: {file_name} - SKIPPED (already exists)")
+            return
+
+        # Show current file being processed
+        file_name = os.path.basename(sourceFile)
+        self.signalProgressFileYofN.emit(f"File {index+1}: Processing {file_name}...")
+        self.listenerProgress(f"Processing: {file_name}", 0)
 
         fOutput = None
         try:
             fOutput = CtrWhisper.generate_subtitles(source_path=sourceFile,
                                                               outputSRT=outputFileSRT,
-                                                              outputTXT=outputFileTXT,
+                                                              outputDOCX=outputFileDOCX,
                                                               src_language=langCode,
                                                               model=self.obj_transcription_parameters.get_model_whisper())
         except Exception as e:
-            error_msg = f"""Error! Unable to generate subtitles: {traceback.format_exc()}"""
+            error_msg = f"""Error processing {file_name}:\n{traceback.format_exc()}\n\nContinuing with next file..."""
             self.signalErrorMsg.emit(error_msg)  # Emit the full traceback
+            # Continue processing other files even if this one fails
+            return
 
         #if nothing was returned
         if not fOutput:
-            self.signalErrorMsg.emit("Error! Unable to generate subtitles for file " + sourceFile + ".")
+            self.signalErrorMsg.emit(f"Error! Unable to generate subtitles for {file_name}. Continuing with next file...")
         elif fOutput != -1:
             #if the operation was not canceled
 
             #updated the progress message
-            self.listenerProgress("Finished", 100)
+            self.listenerProgress(f"Finished: {file_name}", 100)
 
             if self.obj_transcription_parameters.boolOpenOutputFilesAuto:
-                #open both SRT and TXT output files
-                MyUtil.open_file(outputFileTXT)
-                MyUtil.open_file(outputFileSRT)
+                #open both SRT and DOCX output files
+                try:
+                    MyUtil.open_file(outputFileDOCX)
+                    MyUtil.open_file(outputFileSRT)
+                except Exception as e:
+                    # Don't fail the whole process if opening files fails
+                    pass
