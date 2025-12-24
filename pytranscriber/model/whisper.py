@@ -120,9 +120,12 @@ class Whisper:
 
     @staticmethod
     def convert_dict_to_list():
-        Whisper.supported_languages_list = list()
+        Whisper.supported_languages_list = []
+        # Add "fa" (Persian) first as the default language
+        Whisper.supported_languages_list.append("fa - persian")
         for (k, v) in Whisper.supported_languages_dict.items():
-            Whisper.supported_languages_list.append(k + " - " + v)
+            if k != "fa":  # Skip "fa" since we already added it first
+                Whisper.supported_languages_list.append(k + " - " + v)
 
     @staticmethod
     def get_supported_languages():

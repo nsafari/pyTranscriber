@@ -13,7 +13,8 @@
 '''
 
 class Google_Speech:
-    supported_languages_list = ["en-US - English (United States)",
+    supported_languages_list = ["fa - Persian",  # Default language - Persian
+                                    "en-US - English (United States)",
                                     "cmn-Hans-CN - Chinese (Simplified, China)",
                                     "cmn-Hant-TW - Chinese (Traditional, Taiwan)",
                                     "yue-Hant-HK - Cantonese (Traditional, HK)",
@@ -80,7 +81,6 @@ class Google_Speech:
                                     'es-VE - Spanish (Venezuela)',
                                     "et - Estonian",
                                     "eu - Basque",
-                                    "fa - Persian",
                                     'fil-PH - Filipino (Philippines)',
                                     "fi - Finnish",
                                     "fr - French",

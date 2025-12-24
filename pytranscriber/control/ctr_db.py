@@ -34,6 +34,9 @@ class CtrDB:
 
                 self.conn = sqlite3.connect(str_local_program_path)
                 cur = self.conn.cursor()
+                
+                # Initialize database tables if they don't exist
+                self._initialize_database(cur)
 
                 return cur
             except Exception as ex:
@@ -44,6 +47,29 @@ class CtrDB:
         self.conn.close()
         self.conn = None
 
+    def _initialize_database(self, cur):
+        """Initialize database tables if they don't exist."""
+        try:
+            # Create Language table if it doesn't exist
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS Language (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    last_language TEXT
+                )
+            ''')
+            
+            # Create Proxy table if it doesn't exist
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS Proxy (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    proxy_address TEXT
+                )
+            ''')
+            
+            self.conn.commit()
+        except sqlite3.Error as e:
+            MessageUtil.show_error_message("InitializeDatabase " + str(e), self.DB_ERROR)
+
     def _load_one_row(self, table_name):
         cur = self.connect()
         if cur is None:
@@ -53,7 +79,10 @@ class CtrDB:
             cur.execute('SELECT * FROM ' + table_name)
             return cur.fetchone()
         except sqlite3.Error as e:
-            MessageUtil.show_error_message("LoadOneRow " + str(e), self.DB_ERROR)
+            # Don't show error message if table doesn't exist - it will be created on next operation
+            # Only show error for other database issues
+            if 'no such table' not in str(e).lower():
+                MessageUtil.show_error_message("LoadOneRow " + str(e), self.DB_ERROR)
             return None
 
     def _save_single_column(self, query, value):
@@ -71,7 +100,9 @@ class CtrDB:
             cur.execute('DELETE FROM ' + table_name)
             self.conn.commit()
         except sqlite3.Error as e:
-            MessageUtil.show_error_message("TruncateTable " + str(e), self.DB_ERROR)
+            # Don't show error message if table doesn't exist - it will be created on next operation
+            if 'no such table' not in str(e).lower():
+                MessageUtil.show_error_message("TruncateTable " + str(e), self.DB_ERROR)
         self.close()
 
     def load_last_language(self):
